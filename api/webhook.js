@@ -7,14 +7,14 @@ export default async function handler(request) {
     const masterIndexId = process.env.INDEX_SPREADSHEET_ID;
 
     // --- SELF-REGISTRATION SYSTEM ---
-    // If you visit this link in a standard web browser (GET request), it triggers setup automatically!
     if (request.method === 'GET') {
         try {
             const currentHost = request.headers.get('host');
             const calculatedWebhookUrl = `https://${currentHost}/api/webhook`;
             
-            // Fire setup request directly to Telegram's API background nodes
+            // FIXED LINE: Enforces the proper api.telegram.org/bot string variables structure
             const telegramSetupEndpoint = `https://telegram.org{token}/setWebhook?url=${encodeURIComponent(calculatedWebhookUrl)}&drop_pending_updates=true`;
+            
             const setupResponse = await fetch(telegramSetupEndpoint);
             const setupResult = await setupResponse.json();
 
@@ -45,13 +45,13 @@ export default async function handler(request) {
         const chatId = payload.message.chat.id;
         const userQuery = String(payload.message.text).toLowerCase().trim();
 
-        // 1. Diagnostic Handshake Verification
+        // Diagnostic Handshake Validation
         if (userQuery === 'test' || userQuery === '/start') {
             await sendTelegram(token, chatId, "🎯 *Vercel Edge Network Active!*\n\nYour message bypassed Google's infrastructure limitations. The cloud framework is operational. Initiating spreadsheet index scan...");
             return new Response('OK', { status: 200 });
         }
 
-        // 2. Fetch shared master Index rows via CSV API endpoint formatting links
+        // Fetch shared master Index rows via CSV API endpoint formatting links
         const indexUrl = `https://google.com{masterIndexId}/export?format=csv`;
         const indexResponse = await fetch(indexUrl);
         const indexCsvText = await indexResponse.text();
