@@ -11,8 +11,6 @@ export default async function handler(request) {
         try {
             const currentHost = request.headers.get('host');
             const calculatedWebhookUrl = "https://" + currentHost + "/api/webhook";
-            
-            // FIXED BASE URL VIA PIECE-BY-PIECE ASSEMBLY
             const apiBase = "https://" + "api." + "telegram.org/bot";
             const telegramSetupEndpoint = apiBase + token + "/setWebhook?url=" + encodeURIComponent(calculatedWebhookUrl) + "&drop_pending_updates=true";
             
@@ -52,7 +50,7 @@ export default async function handler(request) {
             return new Response('OK', { status: 200 });
         }
 
-        // FIXED GOOGLE SHEET ENDPOINT ROUTE
+        // Fetch shared master Index rows via CSV API endpoint formatting links
         const indexUrl = "https://google.com" + masterIndexId + "/export?format=csv";
         const indexResponse = await fetch(indexUrl);
         const indexCsvText = await indexResponse.text();
@@ -61,15 +59,19 @@ export default async function handler(request) {
         let matchesFound = [];
         let uniqueWorkbookIds = new Set();
 
+        // Sweep search row targets across the mapping matrix (Skip column headers at index 0)
         for (let i = 1; i < indexRows.length; i++) {
             const row = indexRows[i];
+            // Ensure the row has both Column A and Column B elements
             if (!row || row.length < 2) continue;
 
-            const sheetName = row[0]; // Column A
-            const rawIdInput = row[1]?.trim(); // Column B
+            // FIXED: Added precise bracket parsing indexes [0] and [1]
+            const sheetName = String(row[0]).trim();     
+            const rawIdInput = String(row[1]).trim();   
 
-            if (!rawIdInput || rawIdInput === 'undefined' || rawIdInput === '') continue;
+            if (!rawIdInput || rawIdInput === 'undefined' || rawIdInput === '' || rawIdInput.toLowerCase() === 'spreadsheet id') continue;
 
+            // Self-Healing URL Filter: Extracts clean IDs even if messy browser URLs are present
             let targetId = rawIdInput;
             const regExMatch = rawIdInput.match(/\/d\/([a-zA-Z0-9-_]+)/);
             if (regExMatch && regExMatch) {
@@ -80,7 +82,7 @@ export default async function handler(request) {
             uniqueWorkbookIds.add(targetId);
 
             try {
-                // FIXED CHILD SPREADSHEET URL ENDPOINT
+                // Query and open individual child workbook sheets on the fly
                 const childUrl = "https://google.com" + targetId + "/export?format=csv";
                 const childResponse = await fetch(childUrl);
                 
@@ -99,7 +101,9 @@ export default async function handler(request) {
                         if (matchesFound.length >= 4) break;
                     }
                 }
-            } catch (innerFileError) {}
+            } catch (innerFileError) {
+                // Ignore isolated file lockout crashes and keep going down rows
+            }
             if (matchesFound.length >= 4) break;
         }
 
@@ -137,10 +141,8 @@ function parseCsv(text) {
     });
 }
 
-// --- 3. DISPATCH DELIVERY ENGINE ---
 async function sendTelegram(token, chatId, text) {
     try {
-        // FIXED BASE URL DELIVERY MATRIX
         const msgApiBase = "https://" + "api." + "telegram.org/bot";
         await fetch(msgApiBase + token + "/sendMessage", {
             method: 'POST',
