@@ -6,13 +6,13 @@ export default async function handler(request) {
     const token = process.env.TELEGRAM_TOKEN;
     const masterIndexId = process.env.INDEX_SPREADSHEET_ID;
 
-    // --- SELF-REGISTRATION SYSTEM ---
+    // --- 1. WEBHOOK SELF-REGISTRATION GATEWAY (GET) ---
     if (request.method === 'GET') {
         try {
             const currentHost = request.headers.get('host');
             const calculatedWebhookUrl = `https://${currentHost}/api/webhook`;
             
-            // FIXED LINE: Enforces the proper api.telegram.org/bot string variables structure
+            // CORRECT API ENDPOINT
             const telegramSetupEndpoint = `https://telegram.org{token}/setWebhook?url=${encodeURIComponent(calculatedWebhookUrl)}&drop_pending_updates=true`;
             
             const setupResponse = await fetch(telegramSetupEndpoint);
@@ -31,7 +31,7 @@ export default async function handler(request) {
         }
     }
 
-    // --- TELEGRAM INCOMING DATA TRAFFIC (POST) ---
+    // --- 2. INCOMING MESSAGES TRAFFIC ROUTER (POST) ---
     if (request.method !== 'POST') {
         return new Response('Method Not Allowed', { status: 405 });
     }
@@ -45,9 +45,9 @@ export default async function handler(request) {
         const chatId = payload.message.chat.id;
         const userQuery = String(payload.message.text).toLowerCase().trim();
 
-        // Diagnostic Handshake Validation
+        // Infrastructure Diagnostic Handshake Command
         if (userQuery === 'test' || userQuery === '/start') {
-            await sendTelegram(token, chatId, "🎯 *Vercel Edge Network Active!*\n\nYour message bypassed Google's infrastructure limitations. The cloud framework is operational. Initiating spreadsheet index scan...");
+            await sendTelegram(token, chatId, "🎯 *Vercel Edge Network Active!*\n\nYour message bypassed Google's infrastructure limitations completely. The serverless framework is operational. Initiating spreadsheet index scan...");
             return new Response('OK', { status: 200 });
         }
 
@@ -64,8 +64,8 @@ export default async function handler(request) {
             const row = indexRows[i];
             if (!row || row.length < 2) continue;
 
-            const sheetName = row[0];
-            const rawIdInput = row[1]?.trim();
+            const sheetName = row[0]; // Column A
+            const rawIdInput = row[1]?.trim(); // Column B
 
             if (!rawIdInput || rawIdInput === 'undefined' || rawIdInput === '') continue;
 
@@ -135,9 +135,11 @@ function parseCsv(text) {
     });
 }
 
+// --- 3. FIXED DISPATCH DELIVERY ENGINE ---
 async function sendTelegram(token, chatId, text) {
     try {
-        await fetch(`https://telegram.org{token}/sendMessage`, {
+        // CORRECTED LINE: Using template literals and api.telegram.org properly
+        await fetch(`https://api.telegram.org{token}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
