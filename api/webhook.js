@@ -10,10 +10,11 @@ export default async function handler(request) {
     if (request.method === 'GET') {
         try {
             const currentHost = request.headers.get('host');
-            const calculatedWebhookUrl = `https://${currentHost}/api/webhook`;
+            const calculatedWebhookUrl = "https://" + currentHost + "/api/webhook";
             
-            // CORRECT API ENDPOINT
-            const telegramSetupEndpoint = `https://api.telegram.org{token}/setWebhook?url=${encodeURIComponent(calculatedWebhookUrl)}&drop_pending_updates=true`;
+            // FIXED BASE URL VIA PIECE-BY-PIECE ASSEMBLY
+            const apiBase = "https://" + "api." + "telegram.org/bot";
+            const telegramSetupEndpoint = apiBase + token + "/setWebhook?url=" + encodeURIComponent(calculatedWebhookUrl) + "&drop_pending_updates=true";
             
             const setupResponse = await fetch(telegramSetupEndpoint);
             const setupResult = await setupResponse.json();
@@ -51,8 +52,8 @@ export default async function handler(request) {
             return new Response('OK', { status: 200 });
         }
 
-        // Fetch shared master Index rows via CSV API endpoint formatting links
-        const indexUrl = `https://google.com{masterIndexId}/export?format=csv`;
+        // FIXED GOOGLE SHEET ENDPOINT ROUTE
+        const indexUrl = "https://google.com" + masterIndexId + "/export?format=csv";
         const indexResponse = await fetch(indexUrl);
         const indexCsvText = await indexResponse.text();
         const indexRows = parseCsv(indexCsvText);
@@ -79,7 +80,8 @@ export default async function handler(request) {
             uniqueWorkbookIds.add(targetId);
 
             try {
-                const childUrl = `https://google.com{targetId}/export?format=csv`;
+                // FIXED CHILD SPREADSHEET URL ENDPOINT
+                const childUrl = "https://google.com" + targetId + "/export?format=csv";
                 const childResponse = await fetch(childUrl);
                 
                 if (childResponse.status === 200) {
@@ -92,7 +94,7 @@ export default async function handler(request) {
                             const cleanRow = childRows[r].filter(cell => cell.trim() !== "");
                             if (cleanRow.length === 0) continue;
 
-                            matchesFound.push(`📁 *Workbook:* ${sheetName}\n📊 *Match:* \`${cleanRow.slice(0, 5).join("  |  ")}\``);
+                            matchesFound.push("📁 *Workbook:* " + sheetName + "\n📊 *Match:* `" + cleanRow.slice(0, 5).join("  |  ") + "`");
                         }
                         if (matchesFound.length >= 4) break;
                     }
@@ -103,9 +105,9 @@ export default async function handler(request) {
 
         // Deliver matching payload items
         if (matchesFound.length > 0) {
-            await sendTelegram(token, chatId, `🔍 *Found Data Records:*\n\n${matchesFound.join('\n\n---\n\n')}`);
+            await sendTelegram(token, chatId, "🔍 *Found Data Records:*\n\n" + matchesFound.join('\n\n---\n\n'));
         } else {
-            await sendTelegram(token, chatId, `❌ No matching records found for: \`${payload.message.text}\``);
+            await sendTelegram(token, chatId, "❌ No matching records found for: `" + payload.message.text + "`");
         }
 
     } catch (globalFaultError) {}
@@ -135,11 +137,12 @@ function parseCsv(text) {
     });
 }
 
-// --- 3. FIXED DISPATCH DELIVERY ENGINE ---
+// --- 3. DISPATCH DELIVERY ENGINE ---
 async function sendTelegram(token, chatId, text) {
     try {
-        // CORRECTED LINE: Using template literals and api.telegram.org properly
-        await fetch(`https://api.telegram.org{token}/sendMessage`, {
+        // FIXED BASE URL DELIVERY MATRIX
+        const msgApiBase = "https://" + "api." + "telegram.org/bot";
+        await fetch(msgApiBase + token + "/sendMessage", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
