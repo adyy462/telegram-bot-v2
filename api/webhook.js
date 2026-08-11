@@ -35,13 +35,14 @@ export default async function handler(request) {
         return new Response('Method Not Allowed', { status: 405 });
     }
 
+    let chatId = "";
     try {
         const payload = await request.json();
         if (!payload.message || !payload.message.text) {
             return new Response('OK', { status: 200 });
         }
 
-        const chatId = payload.message.chat.id;
+        chatId = String(payload.message.chat.id);
         const userQuery = String(payload.message.text).toLowerCase().trim();
 
         // Infrastructure Diagnostic Handshake Command
@@ -62,10 +63,10 @@ export default async function handler(request) {
         // Sweep search row targets across the mapping matrix (Skip column headers at index 0)
         for (let i = 1; i < indexRows.length; i++) {
             const row = indexRows[i];
-            // Ensure the row has both Column A and Column B elements
+            // Ensure the row has structural elements
             if (!row || row.length < 2) continue;
 
-            // FIXED: Added precise bracket parsing indexes [0] and [1]
+            // FIXED EXTRACTION: Explicitly pull Column A (0) and Column B (1) via array properties
             const sheetName = String(row[0]).trim();     
             const rawIdInput = String(row[1]).trim();   
 
@@ -74,7 +75,7 @@ export default async function handler(request) {
             // Self-Healing URL Filter: Extracts clean IDs even if messy browser URLs are present
             let targetId = rawIdInput;
             const regExMatch = rawIdInput.match(/\/d\/([a-zA-Z0-9-_]+)/);
-            if (regExMatch && regExMatch) {
+            if (regExMatch && regExMatch[1]) {
                 targetId = regExMatch[1];
             }
 
@@ -96,14 +97,16 @@ export default async function handler(request) {
                             const cleanRow = childRows[r].filter(cell => cell.trim() !== "");
                             if (cleanRow.length === 0) continue;
 
-                            matchesFound.push("📁 *Workbook:* " + sheetName + "\n📊 *Match:* `" + cleanRow.slice(0, 5).join("  |  ") + "`");
+                            // Clean data elements safely to prevent Telegram Markdown parser crashes
+                            const displayLine = cleanRow.slice(0, 5).join(" | ").replace(/[_*`\[\]()]/g, '\\$&');
+                            const cleanSheetName = sheetName.replace(/[_*`\[\]()]/g, '\\$&');
+
+                            matchesFound.push("📁 *Workbook:* " + cleanSheetName + "\n📊 *Match:* `" + displayLine + "`");
                         }
                         if (matchesFound.length >= 4) break;
                     }
                 }
-            } catch (innerFileError) {
-                // Ignore isolated file lockout crashes and keep going down rows
-            }
+            } catch (innerFileError) {}
             if (matchesFound.length >= 4) break;
         }
 
@@ -111,10 +114,15 @@ export default async function handler(request) {
         if (matchesFound.length > 0) {
             await sendTelegram(token, chatId, "🔍 *Found Data Records:*\n\n" + matchesFound.join('\n\n---\n\n'));
         } else {
-            await sendTelegram(token, chatId, "❌ No matching records found for: `" + payload.message.text + "`");
+            await sendTelegram(token, chatId, "❌ No matching records found for: `" + payload.message.text.replace(/[_*`\[\]()]/g, '\\$&') + "`");
         }
 
-    } catch (globalFaultError) {}
+    } catch (globalFaultError) {
+        // Safe tracking backup warning route output
+        if (chatId) {
+            await sendTelegram(token, chatId, "⚠️ System execution exception encountered: " + globalFaultError.toString());
+        }
+    }
 
     return new Response('OK', { status: 200 });
 }
