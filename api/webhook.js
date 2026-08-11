@@ -13,7 +13,7 @@ export default async function handler(request) {
             const calculatedWebhookUrl = `https://${currentHost}/api/webhook`;
             
             // CORRECT API ENDPOINT
-            const telegramSetupEndpoint = `https://telegram.org{token}/setWebhook?url=${encodeURIComponent(calculatedWebhookUrl)}&drop_pending_updates=true`;
+            const telegramSetupEndpoint = `https://api.telegram.org{token}/setWebhook?url=${encodeURIComponent(calculatedWebhookUrl)}&drop_pending_updates=true`;
             
             const setupResponse = await fetch(telegramSetupEndpoint);
             const setupResult = await setupResponse.json();
